@@ -8,7 +8,7 @@ const targetEnvPath = './target.env';
 const getTargetEnv = async () => {
  try {
   const fileData = await readFile(targetEnvPath, 'utf-8');
-  const rows = fileData.split('\n');
+  const rows = fileData.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split('\n');
 
   if(!rows.length) {
     throw new Error('target.env have no rows');
@@ -43,11 +43,18 @@ axios.defaults.headers = {
   Authorization: 'Bearer ' + bearerToken
 }
 
-const requests = mappedRows.map(r => axios.post('/', r));
-
-const results = await Promise.all(requests)
-results.forEach(r => {
-  console.log(r.status);
-});
+const results = [];
+for await (const r of mappedRows) {
+  try {
+    const res = await axios.post('/', r)
+    results.push(res.data)
+  } catch (error) {
+    results.push({
+      key: r.key,
+      message: `${error.response.data.error.message}. ${error.response.data.error.detail}`
+    })
+  }
+}
+console.log(results);
 })();
 
